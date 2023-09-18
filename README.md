@@ -1,0 +1,1 @@
+Mini reconhecedor HTML
