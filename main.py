@@ -14,16 +14,16 @@ def print_tag(tag, nivel):
     
     for atributo, valor in tag.attrs.items():
         print(f"\n{'  ' * (nivel+1)}Atributo de Tag: {atributo}")
-        valores= enumerate(valor.split(';'))
-        if len(valores)>1:
-            for i, v in valores:
+        valores= valor.split(';')
+        if len(valores) > 1:
+            for i, v in enumerate(valores):
                 partes = v.split(':')
                 if len(partes) == 2:
                     nome_css, valor_css = partes
                     print(f"\n{'  ' * (nivel+2)}Conteúdo {i + 1} do style: {nome_css.strip()}")
                     print(f"\n{'  ' * (nivel+2)}valor conteúdo {i + 1} : {valor_css.strip()}")
         else:
-            print(f"\n{' ' * (nivel+1)}Valor do atributo: {valor}")
+            print(f"\n{'  ' * (nivel+1)}Valor do atributo: {valor}")
     
     if tag.string:
         print(f"\n{'  ' * (nivel+1)}conteúdo da tag: {tag.string.strip()}")
