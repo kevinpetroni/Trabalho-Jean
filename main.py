@@ -32,3 +32,5 @@ def imprimir_tag(tag, nivel):
 
 # Iniciar a análise com a tag HTML raiz
 imprimir_tag(soup.html, 0)
+
+#teste 
