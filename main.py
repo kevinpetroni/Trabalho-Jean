@@ -1,49 +1,72 @@
+
 import re
 
-# Texto HTML de entrada
-html_input = """
-<html> <head> <title> Compiladores </title> </head><body> <p style="color:red;background:blue;" id="abc"> Unipinhal </p> <br> </body></html>
-"""
+html = '<html> <head> <title> Compiladores </title> </head><body> <p style="color:red;background:blue;" id="abc"> Unipinhal </p> <br> </body></html>'
 
-# Padrões regex para tags, atributos e conteúdo
-tag_pattern = r'<\s*(\w+)[^>]*>'
-attribute_pattern = r'(\w+)\s*=\s*["\']([^"\']+)["\']'
-content_pattern = r'>([^<]+)<'
+acceptable = {
+  "tags": ['html', 'head', 'body', 'title', 'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'img'],
+  "unique_tags": ['br'],
+  "attrs": ['id', 'style', 'src', 'width', 'height'],
+  "css_attrs": ['width', 'height', 'color', 'font-size', 'background', 'border']
+}
 
-# Nível inicial
-level = 0
+useful_pattern= '[^<>\s]+' # serve para evitar conteúdo indesejado dentros das tags: espaços e aberturas de colchetes com sinal
+inner_html_pattern= '[^<]*'
+attrs_pattern= '\s+([^<>\s]+)="([^<>\s]+)"'
+style_attr_pattern= '([^<>\s;]+):([^<>\s;]+);'
+regex_patttern= f'({inner_html_pattern})<(\/)?({useful_pattern})(\s+[^<>]+="[^<>]+")*'
+level= 0
+tokens= []
 
-# Função para imprimir uma linha formatada
-def print_line(tag, level, attribute=None, attribute_value=None, content=None):
-    indentation = " " * (level * 2)
-    if attribute is None:
-        print(f"{indentation}Tag de {'abertura' if content is not None else 'fechamento'}: {tag}, Nível {level}")
-    elif attribute_value is None:
-        print(f"{indentation}Atributo de Tag: {attribute}")
+def has_inner_text(inner_html): 
+  if inner_html!='':
+    inner_html= inner_html.strip()
+    tokens.append(("conteúdo de tag", inner_html))
+
+def handle_tag(closing, tag_name): #Distingue Tags de fechamento, abertura e de única chamada
+  global level
+  tag_name= tag_name.strip()
+  if tag_name in acceptable.get("unique_tags"):  #Verifica se tag é presente na lista de tags sem innerHTML
+    tokens.append((f"tag única", tag_name, level)) 
+  elif tag_name in acceptable.get("tags"): #Verifica se tag é presente na lista de tags com innerHTML 
+    if closing:
+      tokens.append((f"tag fechamento", tag_name)) 
+      level -= 1
     else:
-        print(f"{indentation}Valor atributo {attribute}: {attribute_value}")
+      tokens.append((f"tag abertura", tag_name, level)) 
+      level += 1
 
-# Encontre todas as correspondências de tags, atributos e conteúdo
-for match in re.finditer(tag_pattern, html_input):
-    tag = match.group(1)
-    if '/' not in tag:
-        # Tag de abertura
-        print_line(tag, level)
-        level += 1
-    else:
-        # Tag de fechamento
-        level -= 1
-        print_line(tag[1:], level)
+def handle_style_attrs(attrs): #atributos de estilo
+  count_style_attrs= 0
+  for attr in re.finditer(style_attr_pattern, attrs):
+    count_style_attrs += 1
+    attr_name, attr_value = attr.groups()
+    tokens.append((f"conteúdo {count_style_attrs} do style", attr_name)) 
+    tokens.append((f"valor conteúdo {count_style_attrs}", attr_value)) 
 
-    # Encontre atributos dentro da tag
-    for attribute_match in re.finditer(attribute_pattern, match.group()):
-        attribute = attribute_match.group(1)
-        attribute_value = attribute_match.group(2)
-        print_line(tag, level, attribute, attribute_value)
+def handle_attrs(attrs):
+  if attrs!='' and attrs is not None:
+    for attr in re.finditer(attrs_pattern, attrs):
+      attr_name, attr_value = attr.groups()
+      if attr_name in acceptable.get("attrs"):
+        tokens.append((f"atributo da tag", attr_name)) 
+        if attr_name=='style':
+          handle_style_attrs(attr_value)
+        else:
+          tokens.append((f"valor atributo", attr_name, ':', attr_value)) 
 
-    # Encontre conteúdo dentro da tag
-    content_match = re.search(content_pattern, match.group())
-    if content_match:
-        content = content_match.group(1).strip()
-        if content:
-            print_line(tag, level, content=content)
+def recognizer_html(html):
+  content_list= html.strip().split(">")
+  for content in content_list:
+    content= content.strip()
+    search_values =re.search(regex_patttern, content)
+    if search_values is not None:
+      inner_html, closing, tag_name, attrs = search_values.groups()
+      has_inner_text(inner_html) #Avalia se possui conteúdo inícialmente para garantir que o conteúdo não seja registrado na ordem errada, seguindo o padrão estabelecido para a expressão regular
+      handle_tag(closing, tag_name)
+      handle_attrs(attrs)
+    
+recognizer_html(html)
+
+for token in tokens:
+  print(token)
